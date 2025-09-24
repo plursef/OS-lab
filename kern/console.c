@@ -6,6 +6,7 @@
 #include <inc/string.h>
 #include <inc/assert.h>
 
+#include <inc/color.h> // Provided a Global var color
 #include <kern/console.h>
 
 static void cons_intr(int (*proc)(void));
@@ -163,8 +164,9 @@ static void
 cga_putc(int c)
 {
 	// if no attribute given, then use black on white
+	if (!color) color = 0x0700;
 	if (!(c & ~0xFF))
-		c |= 0x0700;
+		c |= color; // 利用全局颜色color来设置c
 
 	switch (c & 0xff) {
 	case '\b':
