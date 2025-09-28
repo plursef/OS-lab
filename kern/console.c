@@ -7,6 +7,7 @@
 #include <inc/assert.h>
 
 #include <inc/color.h> // Provided a Global var color
+int color;
 #include <kern/console.h>
 
 static void cons_intr(int (*proc)(void));
