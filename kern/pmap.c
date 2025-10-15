@@ -109,6 +109,7 @@ boot_alloc(uint32_t n)
 		nextfree = ROUNDUP(nextfree + n, PGSIZE);
 		if ((uintptr_t) nextfree >= KERNBASE + npages * PGSIZE)
 			panic("boot_alloc: out of memory\n");
+		assert((uintptr_t) nextfree % PGSIZE == 0);
 		return result;
 	}
 	return NULL;
@@ -261,9 +262,21 @@ page_init(void)
 	// free pages!
 	size_t i;
 	for (i = 0; i < npages; i++) {
-		pages[i].pp_ref = 0;
-		pages[i].pp_link = page_free_list;
-		page_free_list = &pages[i];
+		if (i == 0 || // page 0 reserved for BIOS
+		    (i >= IOPHYSMEM / PGSIZE && i < EXTPHYSMEM / PGSIZE) || // IO hole
+		    (i >= EXTPHYSMEM / PGSIZE && i < (PADDR(boot_alloc(0)) / PGSIZE)) || // kernel and data structures
+		    (i >= PADDR(bootstack) / PGSIZE && i < (PADDR(bootstacktop)) / PGSIZE)) // boot stack
+			{
+			assert(i >= 1 && i < npages_basemem);
+			// This page is in use.
+			pages[i].pp_ref = 1;
+			pages[i].pp_link = NULL;
+		} else {
+			// This page is free.
+			pages[i].pp_ref = 0;
+			pages[i].pp_link = page_free_list;
+			page_free_list = &pages[i];
+		}
 	}
 }
 
