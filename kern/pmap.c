@@ -102,7 +102,15 @@ boot_alloc(uint32_t n)
 	// to a multiple of PGSIZE.
 	//
 	// LAB 2: Your code here.
-
+	if (n == 0)
+		return nextfree;
+	if (n > 0) {
+		result = nextfree;
+		nextfree = ROUNDUP(nextfree + n, PGSIZE);
+		if ((uintptr_t) nextfree >= KERNBASE + npages * PGSIZE)
+			panic("boot_alloc: out of memory\n");
+		return result;
+	}
 	return NULL;
 }
 
