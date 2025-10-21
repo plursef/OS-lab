@@ -204,6 +204,18 @@ debuginfo_eip(uintptr_t addr, struct Eipdebuginfo *info)
 	//	Look at the STABS documentation and <inc/stab.h> to find
 	//	which one.
 	// Your code here.
+	stab_binsearch(stabs, &lline, &rline, N_SLINE, addr);
+	if (lline <= rline) {
+		/*	示例参考
+			n_strx  = 0
+			n_type  = N_SLINE
+			n_other = 0
+			n_desc  = 304         // 源码第304行
+			n_value = 0x0000000d  // 距离函数起始指令地址
+		*/
+		info->eip_line = stabs[lline].n_desc;
+	}
+	else return -1;
 
 
 	// Search backwards from the line number for the relevant filename

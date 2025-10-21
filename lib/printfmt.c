@@ -8,6 +8,8 @@
 #include <inc/stdarg.h>
 #include <inc/error.h>
 
+#include <inc/color.h> // Provided a Global var color
+// int color;
 /*
  * Space or zero padding and a field width are supported for the numeric
  * formats only.
@@ -90,8 +92,10 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 
 	while (1) {
 		while ((ch = *(unsigned char *) fmt++) != '%') {
-			if (ch == '\0')
+			if (ch == '\0'){
+				color = 0x0700; // 输出完一次字符串重置颜色	
 				return;
+			}
 			putch(ch, putdat);
 		}
 
@@ -206,10 +210,13 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 		// (unsigned) octal
 		case 'o':
 			// Replace this with your code.
-			putch('X', putdat);
-			putch('X', putdat);
-			putch('X', putdat);
-			break;
+			// putch('X', putdat);
+			// putch('X', putdat);
+			// putch('X', putdat);
+			num = getuint(&ap, lflag);
+			base = 8;
+			goto number;
+			// break;
 
 		// pointer
 		case 'p':
@@ -219,6 +226,10 @@ vprintfmt(void (*putch)(int, void*), void *putdat, const char *fmt, va_list ap)
 				(uintptr_t) va_arg(ap, void *);
 			base = 16;
 			goto number;
+		case 'm': // change the color
+			num = getint(&ap, lflag);
+			color = num;
+			break;
 
 		// (unsigned) hexadecimal
 		case 'x':
