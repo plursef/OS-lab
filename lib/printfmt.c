@@ -9,7 +9,7 @@
 #include <inc/error.h>
 
 #include <inc/color.h> // Provided a Global var color
-// int color;
+int color;
 /*
  * Space or zero padding and a field width are supported for the numeric
  * formats only.
