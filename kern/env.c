@@ -368,7 +368,7 @@ load_icode(struct Env *e, uint8_t *binary)
 	for (; ph < eph; ph++){
 		if (ph->p_type != ELF_PROG_LOAD) continue;
 		// Allocate memory for the segment (Writable by user and kernel)
-		region_alloc(e, ph->p_va, ph->p_memsz);
+		region_alloc(e, (void *)ph->p_va, ph->p_memsz);
 		// Copy file content to memory
 		memmove((void*)ph->p_va, binary + ph->p_offset, ph->p_filesz);
 		// Zero remaining memory (bss)
@@ -407,8 +407,8 @@ env_create(uint8_t *binary, enum EnvType type)
 	// LAB 3: Your code here.
 	struct Env * e;
 	int r; // error num
-	if (!(r = env_alloc(&e, 0))) {
-		panic("env_create: %e", r);
+	if ((r = env_alloc(&e, 0))) {
+		panic("env_create: %e, %d", -r);
 	}
 	// load elf binary file
 	load_icode(e, binary);
