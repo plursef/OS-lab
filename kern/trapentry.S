@@ -114,9 +114,9 @@ _alltraps:
 	 * kern_pgdir is a C variable holding the kernel virtual address of the page directory.
 	 * Physical address = kern_pgdir - KERNBASE.
 	 */
-	movl kern_pgdir, %eax
-	subl $KERNBASE, %eax
-	movl %eax, %cr3
+	# movl kern_pgdir, %eax
+	# subl $KERNBASE, %eax
+	# movl %eax, %cr3
 
 	/* Push pointer to trapframe (current esp points to start of Trapframe) */
 	pushl %esp
