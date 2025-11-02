@@ -407,8 +407,8 @@ env_create(uint8_t *binary, enum EnvType type)
 	// LAB 3: Your code here.
 	struct Env * e;
 	int r; // error num
-	if ((r = env_alloc(&e, 0))) {
-		panic("env_create: %e, %d", -r);
+	if ((r = env_alloc(&e, 0)) < 0) {
+		panic("env_create: %e", -r);
 	}
 	// load elf binary file
 	load_icode(e, binary);
