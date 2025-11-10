@@ -73,6 +73,89 @@ trap_init(void)
 
 	// LAB 3: Your code here.
 
+	// Set up IDT entries for exceptions, IRQs, and syscall.
+
+	extern void divide();
+	extern void debug();
+	extern void nmi();
+	extern void brkpt();
+	extern void oflow();
+	extern void bound();
+	extern void illop();
+	extern void device();
+	extern void dblflt();
+	extern void tss();
+	extern void segnp();
+	extern void stack();
+	extern void gpflt();
+	extern void pgflt();
+	extern void fperr();
+	extern void align();
+	extern void mchk();
+	extern void simderr();
+
+	extern void irq0();
+	extern void irq1();
+	extern void irq2();
+	extern void irq3();
+	extern void irq4();
+	extern void irq5();
+	extern void irq6();
+	extern void irq7();
+	extern void irq8();
+	extern void irq9();
+	extern void irq10();
+	extern void irq11();
+	extern void irq12();
+	extern void irq13();
+	extern void irq14();
+	extern void irq15();
+
+	extern void syscall_handler();
+
+	/* Use trap (trap gate) for exceptions so IF is left alone; for hardware IRQs use
+	* interrupt gates (clears IF) to avoid nested interrupts. */
+
+	SETGATE(idt[T_DIVIDE], 1, GD_KT, divide, 0);
+	SETGATE(idt[T_DEBUG], 1, GD_KT, debug, 0);
+	SETGATE(idt[T_NMI], 1, GD_KT, nmi, 0);
+	SETGATE(idt[T_BRKPT], 1, GD_KT, brkpt, 3); /* user-accessible */
+	SETGATE(idt[T_OFLOW], 1, GD_KT, oflow, 0);
+	SETGATE(idt[T_BOUND], 1, GD_KT, bound, 0);
+	SETGATE(idt[T_ILLOP], 1, GD_KT, illop, 0);
+	SETGATE(idt[T_DEVICE], 1, GD_KT, device, 0);
+	SETGATE(idt[T_DBLFLT], 1, GD_KT, dblflt, 0);
+	SETGATE(idt[T_TSS], 1, GD_KT, tss, 0);
+	SETGATE(idt[T_SEGNP], 1, GD_KT, segnp, 0);
+	SETGATE(idt[T_STACK], 1, GD_KT, stack, 0);
+	SETGATE(idt[T_GPFLT], 1, GD_KT, gpflt, 0);
+	SETGATE(idt[T_PGFLT], 1, GD_KT, pgflt, 0);
+	SETGATE(idt[T_FPERR], 1, GD_KT, fperr, 0);
+	SETGATE(idt[T_ALIGN], 1, GD_KT, align, 0);
+	SETGATE(idt[T_MCHK], 1, GD_KT, mchk, 0);
+	SETGATE(idt[T_SIMDERR], 1, GD_KT, simderr, 0);
+
+	/* IRQs: use interrupt gates (istrap = 0) */
+	SETGATE(idt[IRQ_OFFSET + 0], 0, GD_KT, irq0, 0);
+	SETGATE(idt[IRQ_OFFSET + 1], 0, GD_KT, irq1, 0);
+	SETGATE(idt[IRQ_OFFSET + 2], 0, GD_KT, irq2, 0);
+	SETGATE(idt[IRQ_OFFSET + 3], 0, GD_KT, irq3, 0);
+	SETGATE(idt[IRQ_OFFSET + 4], 0, GD_KT, irq4, 0);
+	SETGATE(idt[IRQ_OFFSET + 5], 0, GD_KT, irq5, 0);
+	SETGATE(idt[IRQ_OFFSET + 6], 0, GD_KT, irq6, 0);
+	SETGATE(idt[IRQ_OFFSET + 7], 0, GD_KT, irq7, 0);
+	SETGATE(idt[IRQ_OFFSET + 8], 0, GD_KT, irq8, 0);
+	SETGATE(idt[IRQ_OFFSET + 9], 0, GD_KT, irq9, 0);
+	SETGATE(idt[IRQ_OFFSET + 10], 0, GD_KT, irq10, 0);
+	SETGATE(idt[IRQ_OFFSET + 11], 0, GD_KT, irq11, 0);
+	SETGATE(idt[IRQ_OFFSET + 12], 0, GD_KT, irq12, 0);
+	SETGATE(idt[IRQ_OFFSET + 13], 0, GD_KT, irq13, 0);
+	SETGATE(idt[IRQ_OFFSET + 14], 0, GD_KT, irq14, 0);
+	SETGATE(idt[IRQ_OFFSET + 15], 0, GD_KT, irq15, 0);
+
+	/* Syscall: allow user (dpl=3) */
+	SETGATE(idt[T_SYSCALL], 1, GD_KT, syscall_handler, 3);
+
 	// Per-CPU setup 
 	trap_init_percpu();
 }
@@ -271,6 +354,13 @@ page_fault_handler(struct Trapframe *tf)
 	// Handle kernel-mode page faults.
 
 	// LAB 3: Your code here.
+	if ((tf->tf_cs & 3) == 0) {
+		// Kernel-mode page fault: panic (kernel bug)
+		cprintf("Page fault in kernel mode at va %08x, eip %08x, err %08x\n",
+				fault_va, tf->tf_eip, tf->tf_err);
+		print_trapframe(tf);
+		panic("page fault in kernel");
+	}
 
 	// We've already handled kernel-mode exceptions, so if we get here,
 	// the page fault happened in user mode.
