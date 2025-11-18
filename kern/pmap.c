@@ -497,24 +497,18 @@ int
 page_insert(pde_t *pgdir, struct PageInfo *pp, void *va, int perm)
 {
 	// Fill this function in
-	pte_t *pte = pgdir_walk(pgdir, va, 1);
-	if (!pte) // if allocation fails, return -E_NO_MEM
-		return -E_NO_MEM;
+    pte_t *pte = pgdir_walk(pgdir, va, 1);
+    if (!pte) // if memory allocation failed, report it
+        return -E_NO_MEM;
 
-	if (*pte & PTE_P) {
-		// There is already a page mapped at 'va'
-		struct PageInfo *old_pp = pa2page(PTE_ADDR(*pte));
-		if (old_pp == pp) {
-			// Same page, just update permissions
-			*pte = (page2pa(pp) | perm | PTE_P);
-			return 0;
-		}
-		page_remove(pgdir, va);
-	}
+	// Increment the ref count first to handle the corner case
+    pp->pp_ref++;
+	// remove the old mapping if exists
+    if (*pte & PTE_P)
+        page_remove(pgdir, va);
 
-	*pte = (page2pa(pp) | perm | PTE_P);
-	pp->pp_ref++;
-	return 0;
+    *pte = page2pa(pp) | perm | PTE_P;
+    return 0;
 }
 
 //
