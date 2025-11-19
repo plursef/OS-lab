@@ -283,6 +283,20 @@ mem_init_mp(void)
 	//     Permissions: kernel RW, user NONE
 	//
 	// LAB 4: Your code here:
+	// 因为是不会释放的静态的内存布局，所以可以使用 boot_map_region 来映射
+	// 其实就相当于 8 个独立的内核线程栈
+
+	// 这里不需要对 [kstacktop_i - (KSTKSIZE + KSTKGAP), kstacktop_i - KSTKSIZE)
+	// 进行处理，因为内核栈溢出时会发生 page fault，一般会直接炸掉
+	for (int i = 1; i < NCPU; i++) { 
+		// i begins from 1, because the 0th CPU stack has been mapped in mem_init
+		boot_map_region(kern_pgdir,
+			KSTACKTOP - i * (KSTKSIZE + KSTKGAP) - KSTKSIZE,
+			KSTKSIZE,
+			PADDR(percpu_kstacks[i]),
+			PTE_W | PTE_P
+		);
+	}
 
 }
 
@@ -330,8 +344,9 @@ page_init(void)
 		    (i >= EXTPHYSMEM / PGSIZE && i < (PADDR(boot_alloc(0)) / PGSIZE)) || // kernel and data structures
 		    (i >= PADDR(bootstack) / PGSIZE && i < (PADDR(bootstacktop)) / PGSIZE)) // boot stack 这一行实际上无效，因为bootstack已经被分配在了.data中
 			{
-			// Assert that [PGSIZE, npages_basemem * PGSIZE) is free.
-			assert(!(i >= 1 && i < npages_basemem));
+			// remove this assertion because of LAB change
+			// assert(!(i >= 1 && i < npages_basemem));
+
 			// This page is in use.
 			pages[i].pp_ref = 1;
 			pages[i].pp_link = NULL;
