@@ -325,6 +325,7 @@ page_init(void)
 	size_t i;
 	for (i = 0; i < npages; i++) {  
 		if (i == 0 || // page 0 reserved for BIOS
+			(i == MPENTRY_PADDR / PGSIZE) || // MP trampoline
 		    (i >= IOPHYSMEM / PGSIZE && i < EXTPHYSMEM / PGSIZE) || // IO hole
 		    (i >= EXTPHYSMEM / PGSIZE && i < (PADDR(boot_alloc(0)) / PGSIZE)) || // kernel and data structures
 		    (i >= PADDR(bootstack) / PGSIZE && i < (PADDR(bootstacktop)) / PGSIZE)) // boot stack 这一行实际上无效，因为bootstack已经被分配在了.data中
@@ -616,6 +617,24 @@ mmio_map_region(physaddr_t pa, size_t size)
 	// Hint: The staff solution uses boot_map_region.
 	//
 	// Your code here:
+    // Page-align the physical address.
+    physaddr_t pa_page = ROUNDDOWN(pa, PGSIZE);
+    // Offset within the first physical page, if `pa` is not aligned.
+    size_t offset = pa & (PGSIZE - 1);
+    // Total amount of virtual space needed, rounded up to page size.
+    size_t round_size = ROUNDUP(size + offset, PGSIZE);
+    uintptr_t old_base = base;
+    base += round_size;
+    if (base > MMIOLIM)
+        panic("mmio_map_region: exceeds MMIOLIM");
+    // Map the virtual range [old_base, old_base + round_size)
+    // to the physical range [pa_page, pa_page + round_size),
+    // using cache-disabled device memory attributes.
+    boot_map_region(kern_pgdir, old_base, round_size, pa_page, PTE_W | PTE_PCD | PTE_PWT);
+    // Return the virtual start of the reserved region
+    // (the caller is responsible for applying the offset).
+    return (void *) old_base;
+	// procedure will never reach here
 	panic("mmio_map_region not implemented");
 }
 
