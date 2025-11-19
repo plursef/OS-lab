@@ -288,7 +288,7 @@ mem_init_mp(void)
 
 	// 这里不需要对 [kstacktop_i - (KSTKSIZE + KSTKGAP), kstacktop_i - KSTKSIZE)
 	// 进行处理，因为内核栈溢出时会发生 page fault，一般会直接炸掉
-	for (int i = 1; i < NCPU; i++) { 
+	for (int i = 0; i < NCPU; i++) { 
 		// i begins from 1, because the 0th CPU stack has been mapped in mem_init
 		boot_map_region(kern_pgdir,
 			KSTACKTOP - i * (KSTKSIZE + KSTKGAP) - KSTKSIZE,
