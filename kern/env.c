@@ -565,6 +565,8 @@ env_run(struct Env *e)
 	curenv->env_status = ENV_RUNNING;
 	curenv->env_runs++;
 	lcr3(PADDR(curenv->env_pgdir));
+	// release the lock *right before* switching to user mode
+	unlock_kernel();
 	// restore the environment's registers
 	env_pop_tf(&e->env_tf);
 
