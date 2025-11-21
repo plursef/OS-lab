@@ -258,6 +258,43 @@ trap_dispatch(struct Trapframe *tf)
 {
 	// Handle processor exceptions.
 	// LAB 3: Your code here.
+	// Page fault
+	if (tf->tf_trapno == T_PGFLT) {
+		page_fault_handler(tf);
+		return;
+	}
+
+	// Breakpoint - enter kernel monitor
+	if (tf->tf_trapno == T_BRKPT) {
+		monitor(tf);
+		return;
+	}
+
+	// System call
+	if (tf->tf_trapno == T_SYSCALL) {
+		int32_t ret = syscall(
+			(tf->tf_regs.reg_eax),
+			(tf->tf_regs.reg_edx),
+			(tf->tf_regs.reg_ecx),
+			(tf->tf_regs.reg_ebx),
+			(tf->tf_regs.reg_edi),
+			(tf->tf_regs.reg_esi));
+		if (ret < 0) {
+			cprintf("syscall %d error: %e\n", tf->tf_regs.reg_eax, ret);
+		}
+		/* return value in eax */
+		tf->tf_regs.reg_eax = ret;
+		return;
+	}
+	// Hardware interrupts (IRQs)
+	if (tf->tf_trapno == IRQ_OFFSET + IRQ_KBD) {
+		kbd_intr();
+		return;
+	}
+	if (tf->tf_trapno == IRQ_OFFSET + IRQ_SERIAL) {
+		serial_intr();
+		return;
+	}
 
 	// Handle spurious interrupts
 	// The hardware sometimes raises these because of noise on the
@@ -308,8 +345,8 @@ trap(struct Trapframe *tf)
 		// Acquire the big kernel lock before doing any
 		// serious kernel work.
 		// LAB 4: Your code here.
-		assert(curenv);
 		lock_kernel();
+		assert(curenv);
 
 		// Garbage collect if current enviroment is a zombie
 		if (curenv->env_status == ENV_DYING) {
