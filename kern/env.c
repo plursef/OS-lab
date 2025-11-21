@@ -515,7 +515,7 @@ void
 env_pop_tf(struct Trapframe *tf)
 {
 	// Record the CPU we are running on for user-space debugging
-	curenv->env_cpunum = cpunum();
+	// curenv->env_cpunum = cpunum();
 
 	asm volatile(
 		"\tmovl %0,%%esp\n"
@@ -561,15 +561,16 @@ env_run(struct Env *e)
 		curenv->env_status = ENV_RUNNABLE;
 	}
 	// set global var curenv to `e`
-	curenv = e;
-	curenv->env_status = ENV_RUNNING;
-	curenv->env_runs++;
-	lcr3(PADDR(curenv->env_pgdir));
+    curenv = e;
+    curenv->env_status = ENV_RUNNING;
+    curenv->env_runs++;
+    curenv->env_cpunum = cpunum();
+    lcr3(PADDR(curenv->env_pgdir));
 	// release the lock *right before* switching to user mode
 	unlock_kernel();
 	// restore the environment's registers
 	env_pop_tf(&e->env_tf);
 
-	panic("env_run not yet implemented");
+	// panic("env_run not yet implemented");
 }
 

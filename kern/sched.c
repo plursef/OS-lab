@@ -29,13 +29,14 @@ sched_yield(void)
 	// below to halt the cpu.
 
 	// LAB 4: Your code here.
-	int index = 0, self_idx = thiscpu->cpu_env ? ENVX(thiscpu->cpu_env->env_id) + 1 : 0;
-	for (index = (self_idx + 1) % NENV; index != self_idx; index = (index + 1) % NENV) {
-		if (envs[index].env_status == ENV_RUNNABLE) {
-			env_run(&envs[index]);
-			return;
-		}
-	}
+ 	int start = thiscpu->cpu_env ? ENVX(thiscpu->cpu_env->env_id) : 0;
+    for (int i = 0; i < NENV; i++) {
+            int idx = (start + i) % NENV;
+            if (envs[idx].env_status == ENV_RUNNABLE) {
+                    env_run(&envs[idx]);
+                    return;
+            }
+    }
 	// If no envs are runnable, but the environment previously
 	// running on this CPU is still ENV_RUNNING, it's okay to
 	// choose that environment.
