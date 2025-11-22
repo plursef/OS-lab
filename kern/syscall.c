@@ -85,7 +85,7 @@ sys_exofork(void)
 	struct Env* env;
 	int errno;
 	// call env_alloc to create a blank env with kernel's page mappings
-	if (errno = env_alloc(&env, curenv->env_id) < 0) {
+	if ((errno = env_alloc(&env, curenv->env_id)) < 0) {
 		cprintf("[%08x]sys_exofork failed: %e\n", curenv->env_id, errno);
 		return errno;
 	}
@@ -99,7 +99,7 @@ sys_exofork(void)
 	return env->env_id;
 
 	// LAB 4: Your code here.
-	panic("sys_exofork not implemented");
+	// panic("sys_exofork not implemented");
 }
 
 // Set envid's env_status to status, which must be ENV_RUNNABLE
@@ -120,11 +120,11 @@ sys_env_set_status(envid_t envid, int status)
 	struct Env* env = NULL;
 	int errno;
 	// ensure valid env
-	if (errno = envid2env(envid, &env, 1) < 0) {
+	if ((errno = envid2env(envid, &env, 1)) < 0) {
 		cprintf("environment envid %08x doesn't currently exist\n", envid);
 		return errno;
 	}
-	if (status != ENV_RUNNABLE || status != ENV_NOT_RUNNABLE) {
+	if (status != ENV_RUNNABLE && status != ENV_NOT_RUNNABLE) {
 		cprintf("[%08x]sys_env_set_status: can't set invalid status(%d)\n", envid, status);
 		return -E_INVAL;
 	}
@@ -180,12 +180,12 @@ sys_page_alloc(envid_t envid, void *va, int perm)
 	struct Env* env = NULL;
 	int errno;
 	// ensure valid env
-	if (errno = envid2env(envid, &env, 1) < 0) {
+	if ((errno = envid2env(envid, &env, 1)) < 0) {
 		cprintf("environment envid %08x doesn't currently exist\n", envid);
 		return errno;
 	}
 	// ensure valid va
-	if (va >= UTOP || ((uintptr_t)va & (PGSIZE - 1))) {
+	if ((uintptr_t)va >= UTOP || ((uintptr_t)va & (PGSIZE - 1))) {
 		cprintf("[%08x]sys_page_alloc: can't alloc at invalid virtual address(%p)\n", envid, va);
 		return -E_INVAL;
 	}
@@ -282,18 +282,19 @@ sys_page_unmap(envid_t envid, void *va)
 	struct Env* env = NULL;
 	int errno;
 	// ensure valid env
-	if (errno = envid2env(envid, &env, 1) < 0) {
+	if ((errno = envid2env(envid, &env, 1)) < 0) {
 		cprintf("environment envid %08x doesn't currently exist\n", envid);
 		return errno;
 	}
 
 	// ensure valid va
-	if (va >= UTOP || ((uintptr_t)va & (PGSIZE - 1))) {
+	if ((uintptr_t)va >= UTOP || ((uintptr_t)va & (PGSIZE - 1))) {
 		cprintf("[%08x]sys_page_alloc: can't alloc at invalid virtual address(%p)\n", envid, va);
 		return -E_INVAL;
 	}
 	page_remove(env->env_pgdir, va);
-
+	// return 0 on success
+	return 0;
 	// LAB 4: Your code here.
 	// panic("sys_page_unmap not implemented");
 }
