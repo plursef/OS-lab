@@ -35,8 +35,7 @@ pgfault(struct UTrapframe *utf)
 	// page to the old page's address.
 	// Hint:
 	//   You should make three system calls.
-	int r = sys_page_alloc(0, PFTEMP, PTE_U | PTE_W | PTE_P);
-	if (r < 0) {
+	if ((r = sys_page_alloc(0, PFTEMP, PTE_U | PTE_W | PTE_P)) < 0) {
 		panic("pgfault: sys_page_alloc failed (%e)\n", r);
 	}
 	void *base = (void *)ROUNDDOWN(addr, PGSIZE);
@@ -49,8 +48,8 @@ pgfault(struct UTrapframe *utf)
 	}
 
 	// LAB 4: Your code here.
-
-	panic("pgfault not implemented");
+	return;
+	// panic("pgfault not implemented");
 }
 
 //
