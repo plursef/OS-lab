@@ -396,7 +396,7 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 			return -E_INVAL;
 		}
 		// if receiver want to recv page
-		if (dstenv->env_ipc_dstva) {
+		if ((uintptr_t)dstenv->env_ipc_dstva < UTOP) {
 			// try to map this page into dstenv's address space at dstenv->env_ipc_dstva
 			if ((errno = page_insert(dstenv->env_pgdir, pp, dstenv->env_ipc_dstva, perm)) < 0) {
 				// cprintf("[%08x]sys_ipc_try_send: no enough memory to map page into target env %08x\n", curenv->env_id, envid);

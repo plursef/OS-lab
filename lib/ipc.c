@@ -71,7 +71,7 @@ ipc_send(envid_t to_env, uint32_t val, void *pg, int perm)
 			return;
 		} else if (errno != -E_IPC_NOT_RECV) {
 			// panic on any error other than -E_IPC_NOT_RECV
-			// panic("ipc_send: unexpected error %e", errno);
+			panic("ipc_send: unexpected error %e", errno);
 		}
 		// otherwise yield and try again
 		sys_yield();
