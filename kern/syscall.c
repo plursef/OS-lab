@@ -353,7 +353,69 @@ static int
 sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 {
 	// LAB 4: Your code here.
-	panic("sys_ipc_try_send not implemented");
+	struct Env* dstenv = NULL;
+	int errno;
+	// ensure valid env
+	if ((errno = envid2env(envid, &dstenv, 0)) < 0) {
+		cprintf("environment envid %08x doesn't currently exist\n", envid);
+		return errno;
+	}
+	// ensure dstenv is currently blocked in sys_ipc_recv
+	if (!dstenv->env_ipc_recving) {
+		cprintf("[%08x]sys_ipc_try_send: target env %08x is not currently blocked in sys_ipc_recv\n", curenv->env_id, envid);
+		return -E_IPC_NOT_RECV;
+	}
+	bool send_page = false;
+	// if sender wants to send a page
+	if (srcva < UTOP) {
+		// ensure valid va
+		if (PGOFF(srcva)) {
+			cprintf("[%08x]sys_ipc_try_send: can't send page at invalid virtual address(%p)\n", curenv->env_id, srcva);
+			return -E_INVAL;
+		}
+		// ensure valid perm
+		if ((perm & (PTE_U|PTE_P)) != (PTE_U|PTE_P)) {
+			cprintf("[%08x]sys_ipc_try_send: can't send page with invalid perm\n", curenv->env_id);
+			return -E_INVAL;
+		}
+		if (perm & ~PTE_SYSCALL) {
+			cprintf("[%08x]sys_ipc_try_send: can't send page with invalid perm\n", curenv->env_id);
+			return -E_INVAL;
+		}
+		// ensure srcva is mapped in current enviroment's address space
+		pte_t *src_pte;
+		struct PageInfo *pp = page_lookup(curenv->env_pgdir, srcva, &src_pte);
+		if (pp == NULL) {
+			cprintf("[%08x]sys_ipc_try_send: can't send page at unmapped virtual address(%p)\n", curenv->env_id, srcva);
+			return -E_INVAL;
+		}
+		// ensure write permission
+		if ((perm & PTE_W) && !(*src_pte & PTE_W)) {
+			cprintf("[%08x]sys_ipc_try_send: can't send page with invalid perm\n", curenv->env_id);
+			return -E_INVAL;
+		}
+		// if receiver want to recv page
+		if (dstenv->env_ipc_dstva < (void *)UTOP) {
+			// try to map this page into dstenv's address space at dstenv->env_ipc_dstva
+			if ((errno = page_insert(dstenv->env_pgdir, pp, dstenv->env_ipc_dstva, perm)) < 0) {
+				cprintf("[%08x]sys_ipc_try_send: no enough memory to map page into target env %08x\n", curenv->env_id, envid);
+				return errno;
+			}
+			// indicate that we have sent a page
+			send_page = true;
+		}
+			
+	}
+	// then just set ipc fields of dstenv
+	dstenv->env_ipc_recving = false;
+	dstenv->env_ipc_from = curenv->env_id;
+	dstenv->env_ipc_value = value;
+	dstenv->env_ipc_perm = send_page ? perm : 0;
+	// mark dstenv runnable again
+	dstenv->env_status = ENV_RUNNABLE;
+	dstenv->env_tf.tf_regs.reg_eax = 0; // return 0
+	return 0;
+	// panic("sys_ipc_try_send not implemented");
 }
 
 // Block until a value is ready.  Record that you want to receive
@@ -371,8 +433,20 @@ static int
 sys_ipc_recv(void *dstva)
 {
 	// LAB 4: Your code here.
-	panic("sys_ipc_recv not implemented");
+	if ((uintptr_t)dstva < UTOP && ((uintptr_t)dstva & (PGSIZE - 1))) {
+		cprintf("[%08x]sys_ipc_recv: can't recv at invalid virtual address(%p)\n", curenv->env_id, dstva);
+		return -E_INVAL;
+	}
+	// set env_ipc_recving and env_ipc_dstva fields of struct Env
+	curenv->env_ipc_recving = true;
+	curenv->env_ipc_dstva = dstva;
+	// mark yourself not runnable
+	curenv->env_status = ENV_NOT_RUNNABLE;
+	// then give up the CPU
+	sched_yield();
+	// sched_yield not return, but we return 0 to satisfy the compiler and my mind
 	return 0;
+	// panic("sys_ipc_recv not implemented");
 }
 
 // Dispatches to the correct kernel function, passing the arguments.
@@ -407,6 +481,10 @@ syscall(uint32_t syscallno, uint32_t a1, uint32_t a2, uint32_t a3, uint32_t a4, 
 		return sys_env_set_status((envid_t)a1, (int)a2);
 	case SYS_env_set_pgfault_upcall:
 		return sys_env_set_pgfault_upcall((envid_t)a1, (void *)a2);
+	case SYS_ipc_try_send:
+		return sys_ipc_try_send((envid_t)a1, (uint32_t)a2, (void *)a3, (unsigned)a4);
+	case SYS_ipc_recv:
+		return sys_ipc_recv((void *)a1);
 	case SYS_yield:
 		sys_yield(); return 0; // sys_yield never returns, but we return 0 to satisfy the compiler and my mind
 	default:
