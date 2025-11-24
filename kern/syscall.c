@@ -357,48 +357,49 @@ sys_ipc_try_send(envid_t envid, uint32_t value, void *srcva, unsigned perm)
 	int errno;
 	// ensure valid env
 	if ((errno = envid2env(envid, &dstenv, 0)) < 0) {
-		cprintf("environment envid %08x doesn't currently exist\n", envid);
+		// cprintf("environment envid %08x doesn't currently exist\n", envid);
 		return errno;
 	}
 	// ensure dstenv is currently blocked in sys_ipc_recv
 	if (!dstenv->env_ipc_recving) {
-		cprintf("[%08x]sys_ipc_try_send: target env %08x is not currently blocked in sys_ipc_recv\n", curenv->env_id, envid);
+		// cprintf("[%08x]sys_ipc_try_send: target env %08x is not currently blocked in sys_ipc_recv\n", curenv->env_id, envid);
 		return -E_IPC_NOT_RECV;
 	}
 	bool send_page = false;
+	dstenv->env_ipc_perm = 0;
 	// if sender wants to send a page
-	if (srcva < UTOP) {
+	if ((uintptr_t)srcva < UTOP) {
 		// ensure valid va
 		if (PGOFF(srcva)) {
-			cprintf("[%08x]sys_ipc_try_send: can't send page at invalid virtual address(%p)\n", curenv->env_id, srcva);
+			// cprintf("[%08x]sys_ipc_try_send: can't send page at invalid virtual address(%p)\n", curenv->env_id, srcva);
 			return -E_INVAL;
 		}
 		// ensure valid perm
 		if ((perm & (PTE_U|PTE_P)) != (PTE_U|PTE_P)) {
-			cprintf("[%08x]sys_ipc_try_send: can't send page with invalid perm\n", curenv->env_id);
+			// cprintf("[%08x]sys_ipc_try_send: can't send page with invalid perm\n", curenv->env_id);
 			return -E_INVAL;
 		}
 		if (perm & ~PTE_SYSCALL) {
-			cprintf("[%08x]sys_ipc_try_send: can't send page with invalid perm\n", curenv->env_id);
+			// cprintf("[%08x]sys_ipc_try_send: can't send page with invalid perm\n", curenv->env_id);
 			return -E_INVAL;
 		}
 		// ensure srcva is mapped in current enviroment's address space
 		pte_t *src_pte;
 		struct PageInfo *pp = page_lookup(curenv->env_pgdir, srcva, &src_pte);
 		if (pp == NULL) {
-			cprintf("[%08x]sys_ipc_try_send: can't send page at unmapped virtual address(%p)\n", curenv->env_id, srcva);
+			// cprintf("[%08x]sys_ipc_try_send: can't send page at unmapped virtual address(%p)\n", curenv->env_id, srcva);
 			return -E_INVAL;
 		}
 		// ensure write permission
 		if ((perm & PTE_W) && !(*src_pte & PTE_W)) {
-			cprintf("[%08x]sys_ipc_try_send: can't send page with invalid perm\n", curenv->env_id);
+			// cprintf("[%08x]sys_ipc_try_send: can't send page with invalid perm\n", curenv->env_id);
 			return -E_INVAL;
 		}
 		// if receiver want to recv page
-		if (dstenv->env_ipc_dstva < (void *)UTOP) {
+		if (dstenv->env_ipc_dstva) {
 			// try to map this page into dstenv's address space at dstenv->env_ipc_dstva
 			if ((errno = page_insert(dstenv->env_pgdir, pp, dstenv->env_ipc_dstva, perm)) < 0) {
-				cprintf("[%08x]sys_ipc_try_send: no enough memory to map page into target env %08x\n", curenv->env_id, envid);
+				// cprintf("[%08x]sys_ipc_try_send: no enough memory to map page into target env %08x\n", curenv->env_id, envid);
 				return errno;
 			}
 			// indicate that we have sent a page
@@ -434,7 +435,7 @@ sys_ipc_recv(void *dstva)
 {
 	// LAB 4: Your code here.
 	if ((uintptr_t)dstva < UTOP && ((uintptr_t)dstva & (PGSIZE - 1))) {
-		cprintf("[%08x]sys_ipc_recv: can't recv at invalid virtual address(%p)\n", curenv->env_id, dstva);
+		// cprintf("[%08x]sys_ipc_recv: can't recv at invalid virtual address(%p)\n", curenv->env_id, dstva);
 		return -E_INVAL;
 	}
 	// set env_ipc_recving and env_ipc_dstva fields of struct Env

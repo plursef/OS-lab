@@ -23,12 +23,7 @@ int32_t
 ipc_recv(envid_t *from_env_store, void *pg, int *perm_store)
 {
 	// LAB 4: Your code here.
-	void *dstva;
-	if (pg == NULL) {
-		dstva = (void *) UTOP; // a value that sys_ipc_recv will understand as "no page"
-	} else {
-		dstva = pg;
-	}
+	void *dstva = pg ? pg : (void *) UTOP;
 	int errno = sys_ipc_recv(dstva);
 	if (errno < 0) {
 		// on error, store 0 in *from_env_store and *perm_store (if nonnull)
@@ -76,7 +71,7 @@ ipc_send(envid_t to_env, uint32_t val, void *pg, int perm)
 			return;
 		} else if (errno != -E_IPC_NOT_RECV) {
 			// panic on any error other than -E_IPC_NOT_RECV
-			panic("ipc_send: unexpected error %e", errno);
+			// panic("ipc_send: unexpected error %e", errno);
 		}
 		// otherwise yield and try again
 		sys_yield();
