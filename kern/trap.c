@@ -94,21 +94,21 @@ trap_init(void)
 	extern void mchk();
 	extern void simderr();
 
-	extern void irq0();
-	extern void irq1();
+	extern void timer();
+	extern void kbd();
 	extern void irq2();
 	extern void irq3();
-	extern void irq4();
+	extern void serial();
 	extern void irq5();
 	extern void irq6();
-	extern void irq7();
+	extern void spurious();
 	extern void irq8();
 	extern void irq9();
 	extern void irq10();
 	extern void irq11();
 	extern void irq12();
 	extern void irq13();
-	extern void irq14();
+	extern void ide();
 	extern void irq15();
 
 	extern void syscall_handler();
@@ -135,22 +135,23 @@ trap_init(void)
 	SETGATE(idt[T_MCHK], 1, GD_KT, mchk, 0);
 	SETGATE(idt[T_SIMDERR], 1, GD_KT, simderr, 0);
 
-	/* IRQs: use interrupt gates (istrap = 0) */
-	SETGATE(idt[IRQ_OFFSET + 0], 0, GD_KT, irq0, 0);
-	SETGATE(idt[IRQ_OFFSET + 1], 0, GD_KT, irq1, 0);
+	/* IRQs: use interrupt gates */
+	// dpl = 0, s.t. 'int' instructions from user mode cannot invoke these interrupts.
+	SETGATE(idt[IRQ_OFFSET + 0], 0, GD_KT, timer, 0);
+	SETGATE(idt[IRQ_OFFSET + 1], 0, GD_KT, kbd, 0);
 	SETGATE(idt[IRQ_OFFSET + 2], 0, GD_KT, irq2, 0);
 	SETGATE(idt[IRQ_OFFSET + 3], 0, GD_KT, irq3, 0);
-	SETGATE(idt[IRQ_OFFSET + 4], 0, GD_KT, irq4, 0);
+	SETGATE(idt[IRQ_OFFSET + 4], 0, GD_KT, serial, 0);
 	SETGATE(idt[IRQ_OFFSET + 5], 0, GD_KT, irq5, 0);
 	SETGATE(idt[IRQ_OFFSET + 6], 0, GD_KT, irq6, 0);
-	SETGATE(idt[IRQ_OFFSET + 7], 0, GD_KT, irq7, 0);
+	SETGATE(idt[IRQ_OFFSET + 7], 0, GD_KT, spurious, 0);
 	SETGATE(idt[IRQ_OFFSET + 8], 0, GD_KT, irq8, 0);
 	SETGATE(idt[IRQ_OFFSET + 9], 0, GD_KT, irq9, 0);
 	SETGATE(idt[IRQ_OFFSET + 10], 0, GD_KT, irq10, 0);
 	SETGATE(idt[IRQ_OFFSET + 11], 0, GD_KT, irq11, 0);
 	SETGATE(idt[IRQ_OFFSET + 12], 0, GD_KT, irq12, 0);
 	SETGATE(idt[IRQ_OFFSET + 13], 0, GD_KT, irq13, 0);
-	SETGATE(idt[IRQ_OFFSET + 14], 0, GD_KT, irq14, 0);
+	SETGATE(idt[IRQ_OFFSET + 14], 0, GD_KT, ide, 0);
 	SETGATE(idt[IRQ_OFFSET + 15], 0, GD_KT, irq15, 0);
 
 	/* Syscall: allow user (dpl=3) */
