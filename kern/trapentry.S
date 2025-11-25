@@ -48,9 +48,90 @@
  * Lab 3: Your code here for generating entry points for the different traps.
  */
 
+/* CPU-defined exceptions (0 - 19) */
+TRAPHANDLER_NOEC(divide, T_DIVIDE)
+TRAPHANDLER_NOEC(debug, T_DEBUG)
+TRAPHANDLER_NOEC(nmi, T_NMI)
+TRAPHANDLER_NOEC(brkpt, T_BRKPT)
+TRAPHANDLER_NOEC(oflow, T_OFLOW)
+TRAPHANDLER_NOEC(bound, T_BOUND)
+TRAPHANDLER_NOEC(illop, T_ILLOP)
+TRAPHANDLER_NOEC(device, T_DEVICE)
+TRAPHANDLER(dblflt, T_DBLFLT)
+TRAPHANDLER(tss, T_TSS)
+TRAPHANDLER(segnp, T_SEGNP)
+TRAPHANDLER(stack, T_STACK)
+TRAPHANDLER(gpflt, T_GPFLT)
+TRAPHANDLER(pgflt, T_PGFLT)
+TRAPHANDLER(fperr, T_FPERR)
+TRAPHANDLER_NOEC(align, T_ALIGN)
+TRAPHANDLER_NOEC(mchk, T_MCHK)
+TRAPHANDLER_NOEC(simderr, T_SIMDERR)
+
+/* IRQs: map IRQ0..IRQ15 to labels irq0..irq15 */
+TRAPHANDLER_NOEC(timer, IRQ_OFFSET + IRQ_TIMER)
+TRAPHANDLER_NOEC(kbd, IRQ_OFFSET + IRQ_KBD)
+TRAPHANDLER_NOEC(irq2, IRQ_OFFSET + 2)
+TRAPHANDLER_NOEC(irq3, IRQ_OFFSET + 3)
+TRAPHANDLER_NOEC(serial, IRQ_OFFSET + IRQ_SERIAL)
+TRAPHANDLER_NOEC(irq5, IRQ_OFFSET + 5)
+TRAPHANDLER_NOEC(irq6, IRQ_OFFSET + 6)
+TRAPHANDLER_NOEC(spurious, IRQ_OFFSET + IRQ_SPURIOUS)
+TRAPHANDLER_NOEC(irq8, IRQ_OFFSET + 8)
+TRAPHANDLER_NOEC(irq9, IRQ_OFFSET + 9)
+TRAPHANDLER_NOEC(irq10, IRQ_OFFSET + 10)
+TRAPHANDLER_NOEC(irq11, IRQ_OFFSET + 11)
+TRAPHANDLER_NOEC(irq12, IRQ_OFFSET + 12)
+TRAPHANDLER_NOEC(irq13, IRQ_OFFSET + 13)
+TRAPHANDLER_NOEC(ide, IRQ_OFFSET + IRQ_IDE)
+TRAPHANDLER_NOEC(irq15, IRQ_OFFSET + 15)
+
+/* System call trap (software interrupt) */
+TRAPHANDLER_NOEC(syscall_handler, T_SYSCALL)
 
 
 /*
  * Lab 3: Your code here for _alltraps
  */
+
+.globl _alltraps
+.type _alltraps, @function
+_alltraps:
+	/* Save segment registers first so the final Trapframe layout is:
+	 * PushRegs, tf_es, tf_ds, tf_trapno, tf_err, tf_eip, tf_cs, tf_eflags, ...
+	 */
+	pushl %ds
+	pushl %es
+
+	/* Save general registers (pusha will store EAX..EDI and saved ESP) */
+	pusha
+
+	/* Set up kernel data segments (so that C code can use kernel data selectors) */
+	movl $GD_KD, %eax
+	movw %ax, %ds
+	movw %ax, %es
+
+	/* switch to kernel page directory: load kernel virtual address and convert to physical
+	 * kern_pgdir is a C variable holding the kernel virtual address of the page directory.
+	 * Physical address = kern_pgdir - KERNBASE.
+	 */
+	# movl kern_pgdir, %eax
+	# subl $KERNBASE, %eax
+	# movl %eax, %cr3
+
+	/* Push pointer to trapframe (current esp points to start of Trapframe) */
+	pushl %esp
+	call trap
+	/* trap should not return; if it does, clean up and return to caller */
+	addl $4, %esp    /* pop argument pushed for trap */
+
+	/* Restore registers & segments in reverse order of pushes */
+	popa
+	popl %es
+	popl %ds
+
+	/* The hardware/entry code left the trap number and error code on the stack
+	 * below the saved registers; just return with iret to resume.
+	 */
+	iret
 

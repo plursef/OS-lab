@@ -119,6 +119,18 @@ env_init(void)
 {
 	// Set up envs array
 	// LAB 3: Your code here.
+	struct Env * curr_env = envs, *last_env = NULL;
+	do {
+		if (last_env) last_env->env_link = curr_env;
+		curr_env->env_status = ENV_FREE;
+		curr_env->env_id = 0;
+		last_env = curr_env;
+		curr_env++;
+
+	} while(curr_env < envs + NENV); 
+	// make sure the last env's env_link is NULL
+	last_env->env_link = NULL;
+	env_free_list = envs;
 
 	// Per-CPU part of the initialization
 	env_init_percpu();
@@ -182,6 +194,13 @@ env_setup_vm(struct Env *e)
 	//    - The functions in kern/pmap.h are handy.
 
 	// LAB 3: Your code here.
+	e->env_pgdir = (pde_t *) page2kva(p);
+	p->pp_ref++;
+	// Copy kernel part from kern_pgdir
+	memcpy(e->env_pgdir + PDX(UTOP),
+		kern_pgdir + PDX(UTOP),
+		(NPDENTRIES - PDX(UTOP)) * sizeof(pde_t)
+	);
 
 	// UVPT maps the env's own page table read-only.
 	// Permissions: kernel R, user R
@@ -247,7 +266,7 @@ env_alloc(struct Env **newenv_store, envid_t parent_id)
 
 	// Enable interrupts while in user mode.
 	// LAB 4: Your code here.
-
+	e->env_tf.tf_eflags |= FL_IF;
 	// Clear the page fault handler until user installs one.
 	e->env_pgfault_upcall = 0;
 
@@ -279,6 +298,16 @@ region_alloc(struct Env *e, void *va, size_t len)
 	//   'va' and 'len' values that are not page-aligned.
 	//   You should round va down, and round (va + len) up.
 	//   (Watch out for corner-cases!)
+	uintptr_t start = ROUNDDOWN((uintptr_t)va, PGSIZE);
+	uintptr_t end   = ROUNDUP((uintptr_t)va + len, PGSIZE);
+	for (uintptr_t addr = start; addr < end; addr += PGSIZE) {
+		struct PageInfo *pp = page_alloc(0);
+		if (!pp)
+			panic("region_alloc: page_alloc failed for NO memory");
+		if (page_insert(e->env_pgdir, pp, (void *)addr, PTE_U | PTE_W) < 0)
+			panic("region_alloc: page_insert failed for NO memory");
+	}
+
 }
 
 //
@@ -335,11 +364,46 @@ load_icode(struct Env *e, uint8_t *binary)
 	//  What?  (See env_run() and env_pop_tf() below.)
 
 	// LAB 3: Your code here.
+	struct Proghdr *ph, *eph;
+	struct Elf * ELFHDR = (struct Elf*)binary;
+
+	// is this a valid ELF?
+	if (ELFHDR->e_magic != ELF_MAGIC)
+		goto bad;
+	
+	// temporarily change CR3 to env's page directory
+	lcr3(PADDR(e->env_pgdir));
+
+	// load each program segment (care of ph flags)
+	ph = (struct Proghdr *) ((uint8_t *) ELFHDR + ELFHDR->e_phoff);
+	eph = ph + ELFHDR->e_phnum;
+	for (; ph < eph; ph++){
+		if (ph->p_type != ELF_PROG_LOAD) continue;
+		// Allocate memory for the segment (Writable by user and kernel)
+		region_alloc(e, (void *)ph->p_va, ph->p_memsz);
+		// Copy file content to memory
+		memmove((void*)ph->p_va, binary + ph->p_offset, ph->p_filesz);
+		// Zero remaining memory (bss)
+		memset((void*)(ph->p_va + ph->p_filesz), 0, ph->p_memsz - ph->p_filesz);
+
+	}
 
 	// Now map one page for the program's initial stack
 	// at virtual address USTACKTOP - PGSIZE.
 
 	// LAB 3: Your code here.
+	region_alloc(e, (void *)(USTACKTOP - PGSIZE), PGSIZE);
+	// restore CR3
+	lcr3(PADDR(kern_pgdir));
+
+	// Set the entry point
+	e->env_tf.tf_eip = ELFHDR->e_entry;
+	// Set the stack pointer
+	e->env_tf.tf_esp = USTACKTOP;
+	return;
+bad:
+	panic("load_icode: Invalid ELF binary");
+
 }
 
 //
@@ -353,6 +417,14 @@ void
 env_create(uint8_t *binary, enum EnvType type)
 {
 	// LAB 3: Your code here.
+	struct Env * e;
+	int r; // error num
+	if ((r = env_alloc(&e, 0)) < 0) {
+		panic("env_create: %e", r);
+	}
+	// load elf binary file
+	load_icode(e, binary);
+	e->env_type = type;
 
 	// If this is the file server (type == ENV_TYPE_FS) give it I/O privileges.
 	// LAB 5: Your code here.
@@ -446,7 +518,7 @@ void
 env_pop_tf(struct Trapframe *tf)
 {
 	// Record the CPU we are running on for user-space debugging
-	curenv->env_cpunum = cpunum();
+	// curenv->env_cpunum = cpunum();
 
 	asm volatile(
 		"\tmovl %0,%%esp\n"
@@ -486,7 +558,22 @@ env_run(struct Env *e)
 	//	e->env_tf to sensible values.
 
 	// LAB 3: Your code here.
+	if (curenv && curenv->env_status == ENV_RUNNING) {
+		// if curenv exists && status == running 
+		// otherwise there's no need to change the status
+		curenv->env_status = ENV_RUNNABLE;
+	}
+	// set global var curenv to `e`
+    curenv = e;
+    curenv->env_status = ENV_RUNNING;
+    curenv->env_runs++;
+    curenv->env_cpunum = cpunum();
+    lcr3(PADDR(curenv->env_pgdir));
+	// release the lock *right before* switching to user mode
+	unlock_kernel();
+	// restore the environment's registers
+	env_pop_tf(&e->env_tf);
 
-	panic("env_run not yet implemented");
+	// panic("env_run not yet implemented");
 }
 

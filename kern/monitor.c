@@ -25,6 +25,7 @@ struct Command {
 static struct Command commands[] = {
 	{ "help", "Display this list of commands", mon_help },
 	{ "kerninfo", "Display information about the kernel", mon_kerninfo },
+	{ "backtrace", "Backtrace the stack frame Now", mon_backtrace },
 };
 
 /***** Implementations of basic kernel monitor commands *****/
@@ -58,7 +59,40 @@ mon_kerninfo(int argc, char **argv, struct Trapframe *tf)
 int
 mon_backtrace(int argc, char **argv, struct Trapframe *tf)
 {
+	uint32_t *ebp;
 	// Your code here.
+	cprintf("Stack backtrace:\n");
+	if (tf) {
+		// 如果是由trap调用，也只能从 read_ebp() 开始处理, 因为我们还没写异常处理 :(
+		ebp = (uint32_t*)read_ebp();
+	}
+	else {
+		// 否则从当前栈帧开始
+		ebp = (uint32_t*)read_ebp();
+	}
+	while (ebp!=0) {
+		uint32_t eip = ebp[1]; // 获得 return address
+		cprintf("  ebp %x  eip %x  args", ebp, eip);
+		uint32_t *lebp = (uint32_t*)(*ebp);
+		for (int i = 0; i < 5; i++) {
+			cprintf(" %08x", ebp[2 + i]);
+		}
+		cprintf("\n");
+		// 查询eip的debuginfo
+		struct Eipdebuginfo info;
+		if (debuginfo_eip((uintptr_t)eip, &info) < 0) {
+			// 部分信息读取失败, 直接打回去
+			cprintf("info at %p is incomplete.\n", eip);
+			return -1;
+		}
+		cprintf("         %s:%d: %.*s+%u\n", 
+			info.eip_file, 
+			info.eip_line, 
+			info.eip_fn_namelen, // restrict print length
+			info.eip_fn_name, 
+			eip - info.eip_fn_addr);
+		ebp = lebp;
+	}
 	return 0;
 }
 
@@ -115,6 +149,10 @@ monitor(struct Trapframe *tf)
 
 	cprintf("Welcome to the JOS kernel monitor!\n");
 	cprintf("Type 'help' for a list of commands.\n");
+	// cprintf("%m%s\n%m%s\n%m%s\n", 
+    // 	0x0600, "orange", 
+    // 	0x0500, "purple", 
+    // 	0x0200, "green");
 
 	if (tf != NULL)
 		print_trapframe(tf);

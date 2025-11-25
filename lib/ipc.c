@@ -23,8 +23,30 @@ int32_t
 ipc_recv(envid_t *from_env_store, void *pg, int *perm_store)
 {
 	// LAB 4: Your code here.
-	panic("ipc_recv not implemented");
-	return 0;
+	void *dstva = pg ? pg : (void *) UTOP;
+	int errno = sys_ipc_recv(dstva);
+	if (errno < 0) {
+		// on error, store 0 in *from_env_store and *perm_store (if nonnull)
+		if (from_env_store) {
+			*from_env_store = 0;
+		}
+		if (perm_store) {
+			*perm_store = 0;
+		}
+		return errno;	
+	}
+	// on success, store the IPC sender's envid in *from_env_store (if nonnull)
+	if (from_env_store) {
+		*from_env_store = thisenv->env_ipc_from;
+	}
+	// store the IPC sender's page permission in *perm_store (if nonnull)
+	if (perm_store) {
+		*perm_store = thisenv->env_ipc_perm;
+	}
+	// return the value sent by the sender
+	return thisenv->env_ipc_value;
+	// panic("ipc_recv not implemented");
+	// return 0;
 }
 
 // Send 'val' (and 'pg' with 'perm', if 'pg' is nonnull) to 'toenv'.
@@ -39,7 +61,22 @@ void
 ipc_send(envid_t to_env, uint32_t val, void *pg, int perm)
 {
 	// LAB 4: Your code here.
-	panic("ipc_send not implemented");
+	if (pg == NULL) {
+		pg = (void *) UTOP; // a value that sys_ipc_try_send will understand as "no page"
+	}
+	while (1) {
+		int errno = sys_ipc_try_send(to_env, val, pg, perm);
+		if (errno == 0) {
+			// success
+			return;
+		} else if (errno != -E_IPC_NOT_RECV) {
+			// panic on any error other than -E_IPC_NOT_RECV
+			panic("ipc_send: unexpected error %e", errno);
+		}
+		// otherwise yield and try again
+		sys_yield();
+	}
+	// panic("ipc_send not implemented");
 }
 
 // Find the first environment of the given type.  We'll use this to

@@ -30,6 +30,23 @@ sched_yield(void)
 	// below to halt the cpu.
 
 	// LAB 4: Your code here.
+ 	int start = thiscpu->cpu_env ? ENVX(thiscpu->cpu_env->env_id) : 0;
+    for (int i = 0; i < NENV; i++) {
+            int idx = (start + i) % NENV;
+            if (envs[idx].env_status == ENV_RUNNABLE) {
+                    env_run(&envs[idx]);
+                    return;
+            }
+    }
+	// If no envs are runnable, but the environment previously
+	// running on this CPU is still ENV_RUNNING, it's okay to
+	// choose that environment.
+	if (thiscpu->cpu_env && thiscpu->cpu_env->env_status == ENV_RUNNING) {
+		env_run(thiscpu->cpu_env);
+		return;
+	}
+	// If there are no runnable environments, simply drop through to the code
+	// below to halt the cpu.	
 
 	// sched_halt never returns
 	sched_halt();
@@ -76,7 +93,7 @@ sched_halt(void)
 		"pushl $0\n"
 		"pushl $0\n"
 		// Uncomment the following line after completing exercise 13
-		//"sti\n"
+		"sti\n"
 		"1:\n"
 		"hlt\n"
 		"jmp 1b\n"
