@@ -106,10 +106,12 @@ spawn(const char *prog, const char **argv)
 	// Set up trap frame, including initial stack.
 	child_tf = envs[ENVX(child)].env_tf;
 	child_tf.tf_eip = elf->e_entry;
-
-	if ((r = init_stack(child, argv, &child_tf.tf_esp)) < 0)
+	// My rewrite version, so that alignment is handled in init_stack
+	// and then prevent compiler claiming warning
+	uintptr_t esp_value = child_tf.tf_esp;
+	if ((r = init_stack(child, argv, &esp_value)) < 0)
 		return r;
-
+	child_tf.tf_esp = esp_value;
 	// Set up program segments as defined in ELF header.
 	ph = (struct Proghdr*) (elf_buf + elf->e_phoff);
 	for (i = 0; i < elf->e_phnum; i++, ph++) {
