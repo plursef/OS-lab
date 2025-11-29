@@ -1,3 +1,6 @@
+#ifndef JOS_FS_H
+#define JOS_FS_H
+
 #include <inc/fs.h>
 #include <inc/lib.h>
 
@@ -11,8 +14,8 @@
 /* Maximum disk size we can handle (3GB) */
 #define DISKSIZE	0xC0000000
 
-struct Super *super;		// superblock
-uint32_t *bitmap;		// bitmap blocks mapped in memory
+extern struct Super *super;		// superblock
+extern uint32_t *bitmap;		// bitmap blocks mapped in memory
 
 /* ide.c */
 bool	ide_probe_disk1(void);
@@ -47,3 +50,5 @@ int	alloc_block(void);
 /* test.c */
 void	fs_test(void);
 
+
+#endif // JOS_FS_H
