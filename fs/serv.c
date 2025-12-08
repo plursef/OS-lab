@@ -214,7 +214,21 @@ serve_read(envid_t envid, union Fsipc *ipc)
 		cprintf("serve_read %08x %08x %08x\n", envid, req->req_fileid, req->req_n);
 
 	// Lab 5: Your code here:
-	return 0;
+	int r;
+	struct OpenFile *o;
+	// First, use openfile_lookup to find the relevant open file.
+	// On failure, return the error code to the client with ipc_send.
+	if ((r = openfile_lookup(envid, req->req_fileid, &o)) < 0)
+		return r;   
+	// Second, call the relevant file system function (from fs/fs.c).
+	// On failure, return the error code to the client.
+	if ((r = file_read(o->o_file, ret->ret_buf, req->req_n, o->o_fd->fd_offset)) < 0) {
+		return r;
+	}
+	// then update the seek position
+	o->o_fd->fd_offset += r;
+	// finally, return the number of bytes read
+	return r;
 }
 
 
