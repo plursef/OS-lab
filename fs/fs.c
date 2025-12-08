@@ -127,6 +127,8 @@ fs_init(void)
 	check_bitmap();
 	
 }
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Waddress-of-packed-member"
 
 // Find the disk block number slot for the 'filebno'th block in file 'f'.
 // Set '*ppdiskbno' to point to that slot.
@@ -149,10 +151,10 @@ file_block_walk(struct File *f, uint32_t filebno, uint32_t **ppdiskbno, bool all
 {
        // LAB 5: Your code here.
 	   if (filebno < NDIRECT) {
-		*ppdiskbno = f->f_direct[filebno];
+		*ppdiskbno = &f->f_direct[filebno];
 	   }
 	   else if (filebno < NDIRECT + NINDIRECT) {
-		if (f->f_indirect == NULL) {
+		if (f->f_indirect == 0) {
 			// if alloc is 0, then we can't allocate an indirect block
 			// just return -E_NOT_FOUND
 			if (!alloc) {
@@ -176,8 +178,10 @@ file_block_walk(struct File *f, uint32_t filebno, uint32_t **ppdiskbno, bool all
 	   else {
 		return -E_INVAL;
 	   }
+	   return 0;
     //    panic("file_block_walk not implemented");
 }
+#pragma GCC diagnostic pop
 
 // Set *blk to the address in memory where the filebno'th
 // block of file 'f' would be mapped.
@@ -211,6 +215,7 @@ file_get_block(struct File *f, uint32_t filebno, char **blk)
 			*pdiskbno = blockno;
 		}
 		*blk = diskaddr(*pdiskbno);
+	return 0;
     //    panic("file_get_block not implemented");
 }
 
