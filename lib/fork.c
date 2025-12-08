@@ -84,6 +84,14 @@ duppage(envid_t envid, unsigned pn)
 			return r;
 		}
 	}
+	if (!(pte & PTE_W) && !(pte & PTE_COW)) {
+		// map the page read-only in the child
+		r = sys_page_map(thisenv->env_id, (void *)(pn * PGSIZE),
+				 envid, (void *)(pn * PGSIZE), PTE_U | PTE_P);
+		if (r < 0) {
+			return r;
+		}
+	}
 	// panic("duppage not implemented");
 	return 0;
 }
