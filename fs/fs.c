@@ -64,8 +64,19 @@ alloc_block(void)
 	// super->s_nblocks blocks in the disk altogether.
 
 	// LAB 5: Your code here.
-	panic("alloc_block not implemented");
-	return -E_NO_DISK;
+    static uint32_t alloc_blockno;   // 默认为 0
+
+    for (uint32_t i = 0; i < super->s_nblocks; i++) {
+        uint32_t blockno = (alloc_blockno + i) % super->s_nblocks;
+        if (block_is_free(blockno)) {
+            bitmap[blockno / 32] &= ~(1 << (blockno % 32));
+            flush_block(&bitmap[blockno / 32]);
+            alloc_blockno = blockno + 1;   // 下次从下一个块开始找
+            return blockno;                // 一般返回 blockno，而不是 alloc_blockno++
+        }
+    }
+
+    return -E_NO_DISK;
 }
 
 // Validate the file system bitmap.
