@@ -70,6 +70,15 @@ duppage(envid_t envid, unsigned pn)
 
 	// LAB 4: Your code here.
 	pte_t pte = uvpt[pn];
+	if (pte & PTE_SHARE) {
+		// if page table entry has PTE_SHARE bit set,
+		// just copy the mapping directly
+		r = sys_page_map(thisenv->env_id, (void *)(pn * PGSIZE),
+				 envid, (void *)(pn * PGSIZE), pte & PTE_SYSCALL);
+		if (r < 0) {
+			return r;
+		}
+	}
 	if ((pte & PTE_W) || (pte & PTE_COW)) {
 		// map the page copy-on-write in the child
 		r = sys_page_map(thisenv->env_id, (void *)(pn * PGSIZE),
@@ -84,7 +93,7 @@ duppage(envid_t envid, unsigned pn)
 			return r;
 		}
 	}
-	if (!(pte & PTE_W) && !(pte & PTE_COW)) {
+	else {
 		// map the page read-only in the child
 		r = sys_page_map(thisenv->env_id, (void *)(pn * PGSIZE),
 				 envid, (void *)(pn * PGSIZE), PTE_U | PTE_P);
