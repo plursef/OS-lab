@@ -79,7 +79,7 @@ duppage(envid_t envid, unsigned pn)
 			return r;
 		}
 	}
-	if ((pte & PTE_W) || (pte & PTE_COW)) {
+	else if ((pte & PTE_W) || (pte & PTE_COW)) {
 		// map the page copy-on-write in the child
 		r = sys_page_map(thisenv->env_id, (void *)(pn * PGSIZE),
 				 envid, (void *)(pn * PGSIZE), PTE_COW | PTE_U | PTE_P);
