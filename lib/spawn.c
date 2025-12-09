@@ -307,7 +307,7 @@ copy_shared_pages(envid_t child)
 	unsigned pn;
 	int r;
 	for (pn = 0; pn < PGNUM(UTOP); pn++) {
-		if ((uvpt[pn] & PTE_SHARE)) {
+		if ((uvpt[pn] & PTE_P) && (uvpt[pn] & PTE_U) && (uvpt[pn] & PTE_SHARE)) {
 			// map the page into the child
 			r = sys_page_map(0, (void *)(pn * PGSIZE),
 					 child, (void *)(pn * PGSIZE), uvpt[pn] & PTE_SYSCALL);
