@@ -133,6 +133,10 @@ serve_open(envid_t envid, struct Fsreq_open *req,
 				cprintf("file_create failed: %e", r);
 			return r;
 		}
+		// Set the newly created node type based on the open mode.
+		// Default to a regular file unless explicitly asked for a directory.
+		f->f_type = (req->req_omode & O_MKDIR) ? FTYPE_DIR : FTYPE_REG;
+		file_flush(f);
 	} else {
 try_open:
 		if ((r = file_open(path, &f)) < 0) {

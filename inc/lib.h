@@ -92,6 +92,7 @@ int	stat(const char *path, struct Stat *statbuf);
 
 // file.c
 int	open(const char *path, int mode);
+int	mkdir(const char *path);
 int	ftruncate(int fd, off_t size);
 int	remove(const char *path);
 int	sync(void);

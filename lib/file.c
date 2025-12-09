@@ -88,6 +88,20 @@ open(const char *path, int mode)
 	return fd2num(fd);
 }
 
+// Create a directory at 'path'.  Returns 0 on success or < 0 on error.
+int
+mkdir(const char *path)
+{
+	int fd, r;
+
+	// Use O_EXCL to mirror typical mkdir semantics when the target exists.
+	if ((fd = open(path, O_MKDIR | O_CREAT | O_EXCL)) < 0)
+		return fd;
+
+	r = close(fd);
+	return r;
+}
+
 // Flush the file descriptor.  After this the fileid is invalid.
 //
 // This function is called by fd_close.  fd_close will take care of
